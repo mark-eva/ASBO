@@ -22,20 +22,25 @@ if ($rec){
 p("<a href=\"sql_monitor.php?db=$db&sid=$sid\">Monitor SQL</a> for this session");
 
 #
-# Locks
+# SQL_ID breakdown for the last 10 minutes
 #
+$snaps_table = u::request_val('snaps_table');
+
 $sql = "
-select
-  l.*
-, (select owner || '.' || object_name from dba_objects where object_id = lock_id1) object_name
-from dba_locks l
-where session_id = :sid
+select count (*) total,  nvl(SQL_ID, 'oracle') SQL_ID
+from $snaps_table
+where sample_time > sysdate - 10/(24*60)
+and session_id = :sid
+group by sql_id
+order by 1 desc
 ";
 
 $cur = $db_obj->exec_sql( $sql, array( array( ":sid", u::request_val('sid') ) ) );
 $db_obj->html_results( $cur );
 
 $sql = "select * from v\$session where sid = :sid";
+$sql = "select  l.* , (select owner || '.' || object_name from dba_objects where object_id = lock_id1) object_name
+        from dba_locks l where session_id = :sid";
 
 $cur = $db_obj->exec_sql( $sql, array( array( ":sid", u::request_val('sid') ) ) );
 $db_obj->html_results( $cur );
